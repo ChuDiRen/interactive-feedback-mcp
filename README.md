@@ -32,11 +32,23 @@ interactive-feedback-mcp
 ```bash
 git clone https://github.com/ChuDiRen/interactive-feedback-mcp.git
 cd interactive-feedback-mcp
+
+# 使用 npm
 npm install
 npm run build
 npm start
+
+# 使用 yarn
+yarn install
+yarn build
+yarn start
+
+# 使用 pnpm（推荐）
+pnpm install
+pnpm build
+pnpm start
 ```
-> 适合开发者进行二次开发
+> 适合开发者进行二次开发，支持 npm/yarn/pnpm 三种包管理器
 
 ## 使用方法
 
@@ -106,44 +118,84 @@ Whenever you're about to complete a user request, call the MCP interactive_feedb
 git clone https://github.com/ChuDiRen/interactive-feedback-mcp.git
 cd interactive-feedback-mcp
 
-# 2. 安装依赖
-npm install
+# 2. 安装依赖（支持多种包管理器）
+npm install    # 或 yarn install 或 pnpm install
 
 # 3. 构建项目
-npm run build
+npm run build  # 或 yarn build 或 pnpm build
 
 # 4. 启动开发服务
-npm run dev
+npm run dev    # 或 yarn dev 或 pnpm dev
 ```
 
 ### 📜 可用脚本
 
 | 命令 | 功能 | 使用场景 |
 |------|------|----------|
-| `npm run build` | 编译 TypeScript | 生产环境构建 |
+| `npm run build` | 完整构建（TypeScript + 资源拷贝） | 生产环境构建 |
+| `npm run build:ts` | 仅编译 TypeScript | 快速编译检查 |
+| `npm run build:assets` | 拷贝静态资源到 dist | 资源更新 |
 | `npm run start` | 启动 MCP 服务器 | 生产环境运行 |
-| `npm run dev` | 开发模式运行 | 开发调试 |
+| `npm run dev` | 开发模式运行（自动设置 NODE_ENV） | 开发调试 |
 | `npm run prepare` | 准备发布 | CI/CD 流程 |
+
+### 🔧 开发与生产环境说明
+
+#### 开发模式 (`npm run dev`)
+- 自动设置 `NODE_ENV=development`
+- 使用 ts-node ESM 加载器直接运行 TypeScript
+- 资源路径：
+  - HTML: `src/renderer/index.html`
+  - 图标: `images/feedback.png`
+- 自动开启 Electron 开发者工具
+
+#### 生产模式 (`npm run start`)
+- 运行编译后的 JavaScript 文件
+- 资源路径：
+  - HTML: `dist/renderer/index.html`
+  - 图标: `dist/images/feedback.png`
+- 构建时自动拷贝所有必要资源
 
 ### 📁 项目结构
 
 ```
 interactive-feedback-mcp/
 ├── 📂 src/                    # 源代码目录
-│   ├── 📄 index.ts           # MCP 服务器入口点
-│   ├── 📂 ui/                # 用户界面相关
-│   │   ├── 📄 main.ts        # Electron 主进程
-│   │   ├── 📄 preload.ts     # Electron 预加载脚本
-│   │   └── 📄 renderer.ts    # Electron 渲染进程
-│   └── 📄 types.ts           # TypeScript 类型定义
-├── 📂 public/                 # 静态资源
-│   └── 📄 index.html         # Electron 应用界面
-├── 📂 build/                  # 构建输出目录
+│   ├── 📄 server.ts          # MCP 服务器入口点
+│   ├── 📄 main.ts            # Electron 主进程
+│   ├── 📄 feedback-ui.ts     # Electron 应用启动器
+│   └── 📂 renderer/          # Electron 渲染进程
+│       ├── 📄 index.html     # 用户界面 HTML
+│       └── 📄 renderer.js    # 前端交互逻辑
+├── 📂 images/                 # 静态资源
+│   └── 📄 feedback.png       # 应用图标
+├── 📂 dist/                   # 构建输出目录
+│   ├── 📄 *.js               # 编译后的 JavaScript 文件
+│   ├── 📂 renderer/          # 拷贝的渲染进程文件
+│   └── 📂 images/            # 拷贝的静态资源
 ├── 📄 package.json           # 项目配置和依赖
 ├── 📄 tsconfig.json          # TypeScript 配置
 ├── 📄 .gitignore             # Git 忽略文件
 └── 📄 README.md              # 项目文档
 ```
+
+### 🔄 构建流程说明
+
+#### 完整构建 (`npm run build`)
+1. **TypeScript 编译** (`npm run build:ts`)
+   - 将 `src/*.ts` 编译为 `dist/*.js`
+   - 生成类型声明文件 (`*.d.ts`)
+   - 生成 source map 文件
+
+2. **资源拷贝** (`npm run build:assets`)
+   - 拷贝 `src/renderer/` → `dist/renderer/`
+   - 拷贝 `images/` → `dist/images/`
+   - 确保生产环境资源完整
+
+#### 开发与生产路径策略
+- **开发模式**: 直接引用 `src/` 和项目根目录资源
+- **生产模式**: 引用 `dist/` 中的编译和拷贝后资源
+- **自动检测**: 基于 `NODE_ENV` 和 `ts-node` 执行参数智能切换
 
 ## 🏗️ 技术架构
 

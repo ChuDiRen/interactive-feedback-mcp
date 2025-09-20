@@ -5,12 +5,18 @@
   "type": "module",
   "main": "dist/server.js",
   "bin": {
-    "interactive-feedback-mcp": "./dist/server.js"
+    "interactive-feedback-mcp": "./dist/server.js",
+    "mcp-feedback-web": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:ts && npm run build:assets",
+    "build:ts": "tsc",
+    "build:assets": "npm run copy:images && npm run copy:static",
+    "copy:images": "node -e \"const fs=require('fs'),path=require('path'); fs.cpSync('images', 'dist/images', {recursive:true})\"",
+    "copy:static": "node -e \"const fs=require('fs'),path=require('path'); fs.cpSync('src/static', 'dist/static', {recursive:true})\"",
     "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts",
+    "start:web": "node dist/cli.js",
+    "dev": "cross-env NODE_ENV=development node --loader ts-node/esm src/server.ts",
     "prepare": "npm run build"
   },
   "keywords": [
@@ -25,18 +31,18 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.5.0",
-    "electron": "^28.0.0",
+    "conf": "^12.0.0",
+    "dotenv": "^17.2.2",
     "express": "^4.18.2",
-    "ws": "^8.14.2",
-    "node-pty": "^1.0.0",
-    "conf": "^12.0.0"
+    "multer": "^2.0.2",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/ws": "^8.5.10",
-    "typescript": "^5.3.0",
+    "cross-env": "^10.0.0",
     "ts-node": "^10.9.0",
-    "electron-builder": "^24.9.1"
+    "typescript": "^5.3.0"
   },
   "engines": {
     "node": ">=18.0.0"

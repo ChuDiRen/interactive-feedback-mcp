@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Copyright (c) 2025 左岚. All rights reserved.
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -6,11 +7,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { spawn } from 'child_process';
 import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
-import { FeedbackUI } from './feedback-ui.js';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { startWebServer } from './server/web-server.js';
 
 interface FeedbackResult {
   command_logs: string;
@@ -103,69 +102,19 @@ class InteractiveFeedbackMCP {
     projectDirectory: string,
     summary: string
   ): Promise<FeedbackResult> {
-    // Create a temporary file for the feedback result
-    const tmpDir = os.tmpdir();
-    const outputFile = path.join(tmpDir, `feedback-${Date.now()}.json`);
+    const web = await startWebServer({
+      projectDirectory,
+      prompt: summary,
+      port: Number(process.env.MCP_WEB_PORT || 5000),
+    });
+
+    console.error(`Open the feedback page: ${web.url}`);
 
     try {
-      // Get the path to feedback UI script
-      const scriptDir = path.dirname(__filename);
-      const feedbackUIPath = path.join(scriptDir, 'feedback-ui.js');
-
-      // Check if we're in development mode
-      const isDev = process.env.NODE_ENV === 'development';
-      const command = isDev ? 'ts-node' : 'node';
-      const scriptPath = isDev
-        ? path.join(path.dirname(scriptDir), 'src', 'feedback-ui.ts')
-        : feedbackUIPath;
-
-      // Run feedback UI as a separate process
-      const args = [
-        scriptPath,
-        '--project-directory',
-        projectDirectory,
-        '--prompt',
-        summary,
-        '--output-file',
-        outputFile,
-      ];
-
-      const result = spawn(command, args, {
-        stdio: ['ignore', 'ignore', 'ignore'],
-        detached: false,
-      });
-
-      // Wait for the process to complete
-      await new Promise<void>((resolve, reject) => {
-        result.on('close', (code) => {
-          if (code !== 0) {
-            reject(new Error(`Feedback UI process exited with code ${code}`));
-          } else {
-            resolve();
-          }
-        });
-
-        result.on('error', (error) => {
-          reject(new Error(`Failed to launch feedback UI: ${error.message}`));
-        });
-      });
-
-      // Read the result from the temporary file
-      const resultData = await fs.promises.readFile(outputFile, 'utf8');
-      const feedbackResult = JSON.parse(resultData) as FeedbackResult;
-
-      // Clean up temporary file
-      await fs.promises.unlink(outputFile);
-
-      return feedbackResult;
-    } catch (error) {
-      // Clean up temporary file if it exists
-      try {
-        await fs.promises.unlink(outputFile);
-      } catch {
-        // Ignore cleanup errors
-      }
-      throw error;
+      const result = await web.waitForResult;
+      return result;
+    } finally {
+      await web.close();
     }
   }
 
@@ -181,12 +130,20 @@ class InteractiveFeedbackMCP {
 }
 
 // Main execution
-if (import.meta.url === `file://${process.argv[1]}`) {
-    const server = new InteractiveFeedbackMCP();
-    server.run().catch((error) => {
-        console.error('Server error:', error);
-        process.exit(1);
-    });
+const isMain = (() => {
+  try {
+    return pathToFileURL(process.argv[1]).href === import.meta.url; // Windows/macOS/Linux兼容
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) {
+  const server = new InteractiveFeedbackMCP();
+  server.run().catch((error) => {
+    console.error('Server error:', error);
+    process.exit(1);
+  });
 }
 
 export { InteractiveFeedbackMCP };
